@@ -30,13 +30,10 @@ def check_user_in_groups(member_groups, allowed_groups):
 
 
 class GoogleOAuthenticator(OAuthenticator, GoogleOAuth2Mixin):
-    _deprecated_aliases = {
+    _deprecated_oauth_aliases = {
         "google_group_whitelist": ("allowed_google_groups", "0.12.0"),
+        **OAuthenticator._deprecated_oauth_aliases,
     }
-
-    @observe(*list(_deprecated_aliases))
-    def _deprecated_trait(self, change):
-        super()._deprecated_trait(change)
 
     google_api_url = Unicode("https://www.googleapis.com", config=True)
 
@@ -183,7 +180,7 @@ class GoogleOAuthenticator(OAuthenticator, GoogleOAuth2Mixin):
             self.log.debug("Refresh token was empty, will try to pull refresh_token from previous auth_state")
             user = handler.find_user(username)
 
-            if user:
+            if user and user.encrypted_auth_state:
                 self.log.debug("encrypted_auth_state was found, will try to decrypt and pull refresh_token from it")
                 try:
                     encrypted = user.encrypted_auth_state

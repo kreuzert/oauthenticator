@@ -189,6 +189,15 @@ class OAuthCallbackHandler(BaseHandler):
         self.check_code()
         self.check_state()
 
+    def append_query_parameters(self, url, exclude=None):
+        """JupyterHub 1.2 appends query parameters by default in get_next_url
+
+        This is not appropriate for oauth callback handlers, where params are oauth state, code, etc.
+
+        Override the method used to append parameters to next_url to not preserve any parameters
+        """
+        return url
+
     def get_next_url(self, user=None):
         """Get the redirect target from the state field"""
         state = self.get_state_url()
@@ -365,11 +374,12 @@ class OAuthenticator(Authenticator):
     async def authenticate(self, handler, data=None):
         raise NotImplementedError()
 
+    _deprecated_oauth_aliases = {}
 
-    def _deprecated_trait(self, change):
+    def _deprecated_oauth_trait(self, change):
         """observer for deprecated traits"""
         old_attr = change.name
-        new_attr, version = self._deprecated_aliases.get(old_attr)
+        new_attr, version = self._deprecated_oauth_aliases.get(old_attr)
         new_value = getattr(self, new_attr)
         if new_value != change.new:
             # only warn if different
@@ -384,3 +394,11 @@ class OAuthenticator(Authenticator):
                 )
             )
             setattr(self, new_attr, change.new)
+
+    def __init__(self, **kwargs):
+        # observe deprecated config names in oauthenticator
+        if self._deprecated_oauth_aliases:
+            self.observe(
+                self._deprecated_oauth_trait, names=list(self._deprecated_oauth_aliases)
+            )
+        super().__init__(**kwargs)
